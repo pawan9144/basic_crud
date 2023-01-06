@@ -17,6 +17,10 @@ const checkUserAuth = async (req, res, next) => {
       const { userID } = jwt.verify(token, JWT_SECRET_KEY);
       //Get User From Token
       const user = await User.findById(userID).select("-password");
+      if (!user) {
+        throw new Error("Un authorised");
+      }
+      req.user = user;
       next();
     } catch (error) {
       console.log(error);

@@ -2,6 +2,7 @@ const User = require("../model/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET_KEY } = require("../config");
+const { findByIdAndUpdate } = require("../model/user");
 
 exports.registerUser = async (req, res) => {
   const { name, email, password, confirmpassword, tc } = req.body;
@@ -92,6 +93,7 @@ exports.loginUser = async (req, res) => {
 
 exports.changePassword = async (req, res) => {
   const { password, confirmPassword } = req.body;
+  const user = req.user;
   if (!confirmPassword && !password) {
     return res.json({
       message: "one of the filed is required(password , confirmPassword)",
@@ -104,4 +106,32 @@ exports.changePassword = async (req, res) => {
       success: false,
     });
   }
+  try {
+    // Password Hashing
+    const salt = await bcrypt.genSalt(10);
+    const hashpassword = await bcrypt.hash(confirmPassword, salt);
+    await User.findByIdAndUpdate(user._id, {
+      $set: {
+        password: hashpassword,
+      },
+    });
+    // Generate JWT token
+    const token = jwt.sign({ userID: user._id }, JWT_SECRET_KEY, {
+      expiresIn: "1d",
+    });
+    return res.json({
+      token: token,
+      message: "password change Successfully",
+    });
+  } catch (error) {
+    return res.json({
+      message: error.message,
+    });
+  }
+};
+
+exports.loggedUser = async (req, res) => {
+  res.json({
+    user: req.user,
+  });
 };
