@@ -1,0 +1,31 @@
+const jwt = require("jsonwebtoken");
+const { JWT_SECRET_KEY } = require("../config");
+const User = require("../model/user");
+
+const checkUserAuth = async (req, res, next) => {
+  const { authorization } = req.headers;
+  if (!authorization && !authorization.startsWith("Bearer")) {
+    return res.json({
+      status: "failed",
+      message: "No Token",
+    });
+  }
+  if (authorization && authorization.startswith("Bearer")) {
+    try {
+      const token = authorization.split(" ")[1];
+      //Verify Token
+      const { userID } = jwt.verify(token, JWT_SECRET_KEY);
+      //Get User From Token
+      const user = await User.findById(userID).select("-password");
+      next();
+    } catch (error) {
+      console.log(error);
+      res.json({
+        status: "failed",
+        message: "Unauthorized User",
+      });
+    }
+  }
+};
+
+module.exports = checkUserAuth;
