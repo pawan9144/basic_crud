@@ -92,24 +92,19 @@ exports.loginUser = async (req, res) => {
 };
 
 exports.changePassword = async (req, res) => {
-  const { password, confirmPassword } = req.body;
+  const { password, confirmpassword } = req.body;
   const user = req.user;
-  if (!confirmPassword && !password) {
+  if (!confirmpassword && !password) {
     return res.json({
       message: "one of the filed is required(password , confirmPassword)",
       success: false,
     });
   }
-  if (password != confirmPassword) {
-    return res.json({
-      message: "password and confirm password doesn't match",
-      success: false,
-    });
-  }
+
   try {
     // Password Hashing
     const salt = await bcrypt.genSalt(10);
-    const hashpassword = await bcrypt.hash(confirmPassword, salt);
+    const hashpassword = await bcrypt.hash(confirmpassword, salt);
     await User.findByIdAndUpdate(user._id, {
       $set: {
         password: hashpassword,
@@ -134,4 +129,82 @@ exports.loggedUser = async (req, res) => {
   res.json({
     user: req.user,
   });
+};
+
+exports.senUserPasswordResetEmail = async (req, res, next) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.json({
+      status: "failed",
+      message: "Email is required",
+    });
+  }
+  const user = await User.findOne({ email: email });
+
+  if (!user) {
+    return res.json({
+      status: "failed",
+      message: "Not a valid user",
+    });
+  }
+  try {
+    const secret = user._id + JWT_SECRET_KEY;
+    const token = jwt.sign({ userID: user._id }, secret, { expiresIn: "5m" });
+    const link = `http://127.0.0.1:3000/api/user/reset/${user._id}/${token}`;
+    console.log(
+      "🚀 ~ file: user.js:155 ~ exports.senUserPasswordResetEmail=async ~ link",
+      link
+    );
+    res.json({
+      status: "success",
+      message: "password reset email sent.. please check your email",
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({
+      status: "failed",
+      messagee: "can not send mail",
+    });
+  }
+};
+
+exports.userPasswordReset = async (req, res, next) => {
+  const { password, confirmpassword } = req.body;
+  const { id, token } = req.params;
+  const user = await User.findById(id);
+  const new_secret_key = user._id + JWT_SECRET_KEY;
+
+  if (!password && !confirmpassword) {
+    return res.json({
+      status: "failed",
+      messagee: "All fields are required!",
+    });
+  }
+  if (password != confirmpassword) {
+    return res.json({
+      message: "password and confirm password doesn't match",
+      success: false,
+    });
+  }
+  try {
+    jwt.verify(token, new_secret_key);
+    // Password Hashing
+    const salt = await bcrypt.genSalt(10);
+    const hashpassword = await bcrypt.hash(password, salt);
+    await User.findByIdAndUpdate(user._id, {
+      $set: {
+        password: hashpassword,
+      },
+    });
+    res.json({
+      status: "failed",
+      messagee: "password reset successfully !",
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({
+      status: "failed",
+      messagee: "InValid Token",
+    });
+  }
 };

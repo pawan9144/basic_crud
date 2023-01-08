@@ -4,13 +4,15 @@ const User = require("../model/user");
 
 const checkUserAuth = async (req, res, next) => {
   const { authorization } = req.headers;
+  console.log("🚀 ~ file: Auth.js:7 ~ checkUserAuth ~ authorization", authorization)
+  
   if (!authorization && !authorization.startsWith("Bearer")) {
     return res.json({
       status: "failed",
       message: "No Token",
     });
   }
-  if (authorization && authorization.startswith("Bearer")) {
+  if (authorization && authorization.startsWith("Bearer")) {
     try {
       const token = authorization.split(" ")[1];
       //Verify Token
