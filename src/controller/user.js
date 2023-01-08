@@ -3,6 +3,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET_KEY } = require("../config");
 const { findByIdAndUpdate } = require("../model/user");
+const { transporter } = require("../config/email.config");
+const { EMAIL_FROM } = require("../config/env.config");
 
 exports.registerUser = async (req, res) => {
   const { name, email, password, confirmpassword, tc } = req.body;
@@ -155,8 +157,17 @@ exports.senUserPasswordResetEmail = async (req, res, next) => {
       "🚀 ~ file: user.js:155 ~ exports.senUserPasswordResetEmail=async ~ link",
       link
     );
+     // send mail with defined transport object
+  let info = await transporter.sendMail({
+    from: EMAIL_FROM, // sender address
+    to: user.email, // list of receivers
+    subject: "Bsic-Crud _ Reset Password Link", // Subject line
+    text: "Click below button to reset password", // plain text body
+    html: `<a href=${link}>Click Here</a>`, // html body
+  });
     res.json({
       status: "success",
+      info:info,
       message: "password reset email sent.. please check your email",
     });
   } catch (error) {
