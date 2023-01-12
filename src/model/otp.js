@@ -15,9 +15,9 @@ const otpSchema = new schema({
     required: "Otp is required",
   },
   expireIn: {
-    type: number,
+    type: Number,
   },
 });
 
-const Otp = mongoose.model("User", otpSchema);
+const Otp = mongoose.model("OTP", otpSchema);
 module.exports = Otp;

@@ -3,8 +3,8 @@ const Otp = require("../model/otp");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET_KEY } = require("../config");
-const { transporter } = require("../config/email.config");
-const { EMAIL_FROM } = require("../config/env.config");
+const { transporter } = require("../config");
+const { EMAIL_FROM } = require("../config");
 
 exports.registerUser = async (req, res) => {
   const { name, email, password, confirmpassword, tc } = req.body;
@@ -13,6 +13,12 @@ exports.registerUser = async (req, res) => {
     return res.status(201).json({
       status: "failed",
       message: "Email is allready exist",
+    });
+  }
+  if (!name && !email && !password && !confirmpassword && !tc) {
+    return res.json({
+      message: "All field is required !",
+      success: false,
     });
   }
   if (password != confirmpassword) {
@@ -32,8 +38,10 @@ exports.registerUser = async (req, res) => {
       ...(tc && { tc }),
     };
     const userData = await User.create(createObj);
+    //find single user
+    const saved_user = await User.findOne({ email: email });
     // GEnerate JWT token
-    const token = jwt.sign({ userID: userData._id }, JWT_SECRET_KEY, {
+    const token = jwt.sign({ userID: saved_user._id }, JWT_SECRET_KEY, {
       expiresIn: "1d",
     });
     return res.status(201).json({
@@ -49,29 +57,34 @@ exports.registerUser = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
+  if (!email && !password) {
+    return res.json({
+      message: "one of the filed is required(password , email)",
+      success: false,
+    });
+  }
+  const user = await User.findOne({ email: email });
+  if (!user) {
+    return res.send({
+      status: "failed",
+      message: "You are not registered User",
+    });
+  }
   try {
-    const user = await User.findOne({ email: email });
-    if (!user) {
-      return res.send({
-        status: "failed",
-        message: "You are not registered User",
-      });
-    }
-
     // Password Hashing
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+    if (user.email === email && isMatch) {
+      // Generate JWT token
+      const token = jwt.sign({ userID: user._id }, JWT_SECRET_KEY, {
+        expiresIn: "1d",
+      });
       return res.json({
-        message: "Email && password is not valid ",
+        token: token,
+        message: "login Successfully",
       });
     }
-    // Generate JWT token
-    const token = jwt.sign({ userID: user._id }, JWT_SECRET_KEY, {
-      expiresIn: "1d",
-    });
     return res.json({
-      token: token,
-      message: "login Successfully",
+      message: "Email && password is not valid ",
     });
   } catch (error) {
     return res.json({
@@ -83,6 +96,13 @@ exports.loginUser = async (req, res) => {
 exports.changePassword = async (req, res) => {
   const { password, confirmpassword } = req.body;
   const user = req.user;
+  if (!confirmpassword && !password) {
+    return res.json({
+      message: "one of the filed is required(password , confirmPassword)",
+      success: false,
+    });
+  }
+
   try {
     // Password Hashing
     const salt = await bcrypt.genSalt(10);
